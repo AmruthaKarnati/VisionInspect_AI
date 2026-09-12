@@ -30,6 +30,7 @@ app.add_middleware(
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 DATABASE_PATH = Path(__file__).resolve().parent / "visioninspect.db"
+SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 TOKEN_SECRET = os.getenv("VISIONINSPECT_TOKEN_SECRET", "visioninspect-demo-secret-change-in-production").encode()
 DEMO_USERS = {
     "engineer@factory.com": {"password": "password123", "name": "Maya Chen", "role": "Quality Engineer"},
@@ -46,9 +47,7 @@ ROLE_PERMISSIONS = {
 def database():
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
-    connection.execute("CREATE TABLE IF NOT EXISTS inspections (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)")
-    connection.execute("CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, metadata TEXT NOT NULL)")
-    connection.execute("CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL, password_hash TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)")
+    connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     for email, user in DEMO_USERS.items():
         connection.execute(
             "INSERT OR IGNORE INTO users (email, name, role, password_hash, active, created_at) VALUES (?, ?, ?, ?, 1, ?)",

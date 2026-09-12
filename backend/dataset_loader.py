@@ -1,28 +1,28 @@
-import os
+from pathlib import Path
 
-DATASET_PATH = "./data/mvtec_ad"
+DATASET_PATH = Path(__file__).resolve().parent / "data" / "mvtec_ad"
 
 def load_mvtec_dataset():
     """Scans the MVTec AD directory and indexes available dataset categories and image paths."""
-    if not os.path.exists(DATASET_PATH):
+    if not DATASET_PATH.exists():
         return {"error": f"Dataset directory '{DATASET_PATH}' not found."}
 
     dataset_summary = {}
 
     # Iterate through product category folders (e.g., bottle, grid)
-    for category in os.listdir(DATASET_PATH):
-        category_path = os.path.join(DATASET_PATH, category)
+    for category_path in sorted(DATASET_PATH.iterdir()):
+        category = category_path.name
         
-        if os.path.isdir(category_path):
+        if category_path.is_dir():
             dataset_summary[category] = {"test_samples": 0, "categories": []}
-            test_path = os.path.join(category_path, "test")
+            test_path = category_path / "test"
             
-            if os.path.exists(test_path):
+            if test_path.exists():
                 # Count sample defect images within categories
-                for defect_type in os.listdir(test_path):
-                    defect_folder = os.path.join(test_path, defect_type)
-                    if os.path.isdir(defect_folder):
-                        images = [f for f in os.listdir(defect_folder) if f.endswith(('.png', '.jpg', '.bmp'))]
+                for defect_folder in sorted(test_path.iterdir()):
+                    defect_type = defect_folder.name
+                    if defect_folder.is_dir():
+                        images = [path for path in defect_folder.iterdir() if path.suffix.lower() in {'.png', '.jpg', '.jpeg', '.bmp'}]
                         dataset_summary[category]["test_samples"] += len(images)
                         dataset_summary[category]["categories"].append(defect_type)
 

@@ -2,6 +2,12 @@
 
 VisionInspect AI is a manufacturing quality inspection demo with image acquisition, OpenCV anomaly detection, defect classification, severity scoring, quality decisions, inspection history, and production analytics.
 
+## Milestone 1 status
+
+The first milestone is implemented and documented in [docs/architecture.md](docs/architecture.md). It includes the React and FastAPI setup, role-based authentication, image acquisition with source and batch metadata, MVTec AD discovery and auditing, the inspection dashboard, and the SQLite schema in [backend/schema.sql](backend/schema.sql).
+
+For Docker, copy [.env.example](.env.example) to `.env` and replace the token secret before starting the stack. The MVTec dataset remains local and ignored by Git because of its size and license requirements.
+
 ## Run locally
 
 Backend:
