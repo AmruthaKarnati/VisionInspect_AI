@@ -63,7 +63,7 @@ Stop the containers with `docker compose down`. Stop any local servers using por
 
 The frontend can be hosted as a Vercel static site, with the FastAPI API hosted as a Render web service. Both providers offer free plans with limits; Render's free service sleeps when idle and has an ephemeral filesystem.
 
-1. In Render, create a Blueprint from this GitHub repository using the root `render.yaml`. It creates the backend service and generates `VISIONINSPECT_TOKEN_SECRET`.
+1. In Render, create a Blueprint from this GitHub repository using the root `render.yaml`. It creates the backend service, pins Python to 3.11 for the available machine-learning dependency wheels, and generates `VISIONINSPECT_TOKEN_SECRET`.
 2. Copy the backend service URL from Render, such as `https://visioninspect-api.onrender.com`.
 3. In Vercel, import the same repository and set the project root directory to `frontend`. The Vercel settings are in `frontend/vercel.json`.
 4. In the Vercel project's environment variables, set `VITE_API_URL` to the Render service URL (without a trailing slash), then deploy or redeploy the frontend.
