@@ -12,11 +12,11 @@ def load_mvtec_dataset():
     # Iterate through product category folders (e.g., bottle, grid)
     for category_path in sorted(DATASET_PATH.iterdir()):
         category = category_path.name
-        
+
         if category_path.is_dir():
             dataset_summary[category] = {"test_samples": 0, "categories": []}
             test_path = category_path / "test"
-            
+
             if test_path.exists():
                 # Count sample defect images within categories
                 for defect_folder in sorted(test_path.iterdir()):

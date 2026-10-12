@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 backend/venv/
 .venv/
+.venv*/
 
 # Runtime and generated model artifacts
 backend/visioninspect.db
@@ -13,6 +14,7 @@ backend/full_evaluation.json
 
 # Local dataset files; download separately using README instructions
 backend/data/mvtec_ad/
+backend/uploaded_images/
 
 # Frontend dependencies and build output
 frontend/node_modules/

@@ -8,7 +8,7 @@ from defect_model import train_model
 if __name__ == "__main__":
     model = train_model()
     print(json.dumps({
-        "model": "hierarchical category-aware random forest feature model",
+        "model": "bottle-only hierarchical random forest feature model",
         "version": model["version"],
         "feature_count": model["feature_count"],
         "samples": sum(model["sample_counts"].values()),

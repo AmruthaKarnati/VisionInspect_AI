@@ -44,6 +44,10 @@ ROLE_PERMISSIONS = {
 }
 
 
+def is_ground_truth_mask(filename):
+    return Path(filename or "").stem.lower().endswith("_mask")
+
+
 def database():
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
@@ -250,7 +254,7 @@ def get_model_info(authorization: str | None = Header(default=None)):
     require_permission(current_user(authorization), "view_analytics")
     model = load_model()
     return {
-        "name": "VisionInspect hierarchical random forest",
+        "name": "VisionInspect bottle-only hierarchical random forest",
         "version": model["version"],
         "feature_count": model["feature_count"],
         "training_samples": sum(model["sample_counts"].values()),
@@ -277,6 +281,11 @@ async def inspect_image(
     try:
         actor = current_user(authorization)
         require_permission(actor, "inspect")
+        if is_ground_truth_mask(file.filename):
+            raise HTTPException(
+                status_code=400,
+                detail="This looks like a ground-truth mask, not a product photo. Upload the original image instead.",
+            )
         started_at = time.perf_counter()
         contents = await file.read()
         if len(contents) > MAX_UPLOAD_BYTES:

@@ -1,21 +1,41 @@
-"""Category-aware supervised defect classifier for the MVTec samples."""
+"""Bottle-only supervised defect classifier for the MVTec samples."""
 
 import json
 import pickle
+import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
 
 import cv2
 import numpy as np
 from skimage.feature import hog
+from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 
 LABELS = ["good", "contamination", "broken_small", "broken_large"]
+PRODUCT_CATEGORY = "bottle"
+MODEL_VERSION = 4
 MODEL_PATH = Path(__file__).resolve().parent / "defect_model.pkl"
 METADATA_PATH = Path(__file__).resolve().parent / "defect_model.json"
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp"}
+
+
+def is_compatible_model(model):
+    if not isinstance(model, dict):
+        return False
+    if model.get("version") != MODEL_VERSION:
+        return False
+    if model.get("labels") != LABELS:
+        return False
+    if not isinstance(model.get("binary_classifiers"), dict):
+        return False
+    if not isinstance(model.get("subtype_classifiers"), dict):
+        return False
+    if not model.get("feature_count"):
+        return False
+    return True
 
 
 def normalize_label(folder):
@@ -46,27 +66,28 @@ def extract_features(image):
 def load_samples(dataset_root=None):
     root = Path(dataset_root or Path(__file__).resolve().parent / "data" / "mvtec_ad")
     samples = []
-    for category_dir in sorted(root.iterdir()):
-        test_dir = category_dir / "test"
-        if not test_dir.exists():
+    category_dir = root / PRODUCT_CATEGORY
+    test_dir = category_dir / "test"
+    if not test_dir.exists():
+        return samples
+    for defect_dir in sorted(test_dir.iterdir()):
+        if not defect_dir.is_dir():
             continue
-        for defect_dir in sorted(test_dir.iterdir()):
-            if not defect_dir.is_dir():
+        label = normalize_label(defect_dir.name)
+        for image_path in sorted(defect_dir.iterdir()):
+            if image_path.suffix.lower() not in IMAGE_EXTENSIONS:
                 continue
-            label = normalize_label(defect_dir.name)
-            for image_path in sorted(defect_dir.iterdir()):
-                if image_path.suffix.lower() not in IMAGE_EXTENSIONS:
-                    continue
-                image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-                if image is not None:
-                    samples.append({"label": label, "category": category_dir.name, "path": str(image_path), "features": extract_features(image)})
+            image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+            if image is not None:
+                samples.append({"label": label, "category": PRODUCT_CATEGORY, "path": str(image_path), "features": extract_features(image)})
     return samples
 
 
 def build_model(samples):
     grouped = defaultdict(list)
     for sample in samples:
-        grouped[sample["category"]].append(sample)
+        if sample["category"] == PRODUCT_CATEGORY:
+            grouped[PRODUCT_CATEGORY].append(sample)
     binary_classifiers = {}
     subtype_classifiers = {}
     for category, category_samples in grouped.items():
@@ -82,7 +103,7 @@ def build_model(samples):
             RandomForestClassifier(n_estimators=300, max_features="sqrt", class_weight="balanced", random_state=42, n_jobs=-1),
         ).fit(np.asarray([item[0] for item in defect_samples]), [item[1] for item in defect_samples])
     return {
-        "version": 3,
+        "version": MODEL_VERSION,
         "feature_count": len(samples[0]["features"]) if samples else 0,
         "labels": LABELS,
         "sample_counts": dict(Counter(sample["label"] for sample in samples)),
@@ -108,8 +129,21 @@ def train_model(dataset_root=None):
 def load_model():
     if not MODEL_PATH.exists():
         return train_model()
-    with MODEL_PATH.open("rb") as model_file:
-        return pickle.load(model_file)
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", category=InconsistentVersionWarning)
+            with MODEL_PATH.open("rb") as model_file:
+                model = pickle.load(model_file)
+        if not is_compatible_model(model):
+            raise ValueError("Stored model is stale or incompatible")
+        return model
+    except Exception:
+        if MODEL_PATH.exists():
+            try:
+                MODEL_PATH.unlink()
+            except OSError:
+                pass
+        return train_model()
 
 
 def predict(image, model=None, category=None):

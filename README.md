@@ -2,20 +2,27 @@
 
 VisionInspect AI is a manufacturing quality inspection demo with image acquisition, OpenCV anomaly detection, defect classification, severity scoring, quality decisions, inspection history, and production analytics.
 
-## Milestone 1 status
+## Milestone status
 
-The first milestone is implemented and documented in [docs/architecture.md](docs/architecture.md). It includes the React and FastAPI setup, role-based authentication, image acquisition with source and batch metadata, MVTec AD discovery and auditing, the inspection dashboard, and the SQLite schema in [backend/schema.sql](backend/schema.sql).
+All four milestones are complete and verified for this repository. The project lifecycle is documented in [docs/architecture.md](docs/architecture.md) and covers the full production-style sequence from local inspection to deployment.
 
-For Docker, copy [.env.example](.env.example) to `.env` and replace the token secret before starting the stack. The MVTec dataset remains local and ignored by Git because of its size and license requirements.
+1. Milestone 1: inspection workflow foundation — React + FastAPI app, role-based authentication, image upload, batch/source metadata, SQLite persistence, and the inspection dashboard.
+2. Milestone 2: data/model intelligence — MVTec AD dataset discovery, dataset audit, feature extraction, model training, and evaluation pipelines.
+3. Milestone 3: analytics and operational visibility — inspection history, analytics summaries, audit trail, model health, and user management.
+4. Milestone 4: deployment readiness — Dockerized backend/frontend stack, operational configuration, and production-friendly environment setup.
+
+The active inspection and model are bottle-only. This workspace retains only the MVTec `bottle` category. MVTec images, uploaded sample copies, and generated model files are excluded from Git because of dataset licensing, size, and model portability. To run inspections from a fresh checkout, obtain the MVTec AD license, place its `bottle` category under `backend/data/mvtec_ad/bottle`, and run `python train_model.py` from `backend` to generate the local model.
 
 ## Run locally
 
 Backend:
 
 ```powershell
+py -3.11 -m venv .venv311
+.\.venv311\Scripts\Activate.ps1
 Push-Location backend
 python -m pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Frontend, in a second terminal:
@@ -23,10 +30,10 @@ Frontend, in a second terminal:
 ```powershell
 Push-Location frontend
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:5173/`.
+Open `http://127.0.0.1:5173/`. The API is at `http://127.0.0.1:8000/`, with interactive docs at `http://127.0.0.1:8000/docs`. Stop each local server with Ctrl+C in its terminal.
 
 Demo accounts:
 
@@ -36,11 +43,34 @@ Demo accounts:
 
 ## Docker
 
+Install and start Docker Desktop before running these commands. A `.env` file is optional for a local demo. For other use, create one from the template and replace its token secret:
+
 ```powershell
-docker compose up --build
+Copy-Item .env.example .env
+```
+
+Build and start the services from the repository root:
+
+```powershell
+docker compose up --build -d
+docker compose ps
 ```
 
 The web app is available at `http://127.0.0.1:5173/` and the API documentation at `http://127.0.0.1:8000/docs`.
+Stop the containers with `docker compose down`. Stop any local servers using ports 8000 or 5173 before starting Compose. The SQLite database is stored inside the backend container without a persistent volume, so inspection history can be lost when that container is removed.
+
+## Free cloud demo (Vercel + Render)
+
+The frontend can be hosted as a Vercel static site, with the FastAPI API hosted as a Render web service. Both providers offer free plans with limits; Render's free service sleeps when idle and has an ephemeral filesystem.
+
+1. In Render, create a Blueprint from this GitHub repository using the root `render.yaml`. It creates the backend service and generates `VISIONINSPECT_TOKEN_SECRET`.
+2. Copy the backend service URL from Render, such as `https://visioninspect-api.onrender.com`.
+3. In Vercel, import the same repository and set the project root directory to `frontend`. The Vercel settings are in `frontend/vercel.json`.
+4. In the Vercel project's environment variables, set `VITE_API_URL` to the Render service URL (without a trailing slash), then deploy or redeploy the frontend.
+
+The frontend expects `VITE_API_URL` at build time; local development continues to use `http://127.0.0.1:8000`.
+
+**Model limitation:** `backend/defect_model.pkl` is excluded from Git, and the licensed MVTec training dataset is not in the repository. A fresh Render deployment therefore cannot perform image inspections until a permitted model artifact is made available to the backend. Do not commit licensed dataset images or derived model files unless their license permits redistribution. SQLite records and uploaded files on Render's free service are also temporary and can be lost when the service restarts or spins down. This setup is for a non-production demo.
 
 ## API surface
 
@@ -56,6 +86,8 @@ The current persistence layer is SQLite for the milestone demo. PostgreSQL or Mo
 
 ## Classification validation
 
+Inspection, model training, and evaluation use the MVTec AD bottle category only. Non-bottle category folders have been removed from this workspace.
+
 Run the reproducible evaluator from `backend`:
 
 ```powershell
@@ -68,17 +100,27 @@ For a faster smoke benchmark:
 python evaluate_model.py --limit-per-class 2
 ```
 
-For an unbiased validation run:
+For the bottle-only stratified 80/20 holdout evaluation:
 
 ```powershell
 python train_model.py
 python evaluate_model.py --holdout
 ```
 
-After extracting a larger MVTec archive, audit it before training:
+Audit the retained bottle dataset from `backend`:
 
 ```powershell
 python dataset_audit.py
 ```
 
-The evaluator reports hierarchical good/bad accuracy, bad-product precision/recall/F1, four-class accuracy, per-class metrics, and a confusion matrix. The deterministic shuffled 80/20 holdout uses 127 training images and 34 validation images. The hierarchical model reports 79.41% good/bad accuracy, 82.14% bad precision, 92.00% bad recall, and 86.79% bad F1. Four-class subtype accuracy is 52.94%, so a CNN/YOLO model with augmentation and a larger independent validation set is still recommended for production manufacturing deployment.
+The bottle-only evaluator reports hierarchical good/bad accuracy, bad-product precision/recall/F1, four-class accuracy, per-class metrics, and a confusion matrix. Its results apply only to bottle images and are not a production accuracy guarantee.
+
+## Tests
+
+Run backend tests from the `backend` directory so the local module imports resolve:
+
+```powershell
+Push-Location backend
+python -m unittest test_requirements.py
+Pop-Location
+```

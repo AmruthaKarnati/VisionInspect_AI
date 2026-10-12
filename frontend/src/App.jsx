@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 
-const API = 'http://127.0.0.1:8000';
+const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 const demoAccounts = {
   engineer: { email: 'engineer@factory.com', password: 'password123' },
   supervisor: { email: 'supervisor@factory.com', password: 'supervisor123' },
@@ -45,7 +45,7 @@ function Login({ onLogin }) {
         <div className="brand-mark">VI</div>
         <p className="eyebrow">VISIONINSPECT AI / CONTROL ROOM</p>
         <h1>Make every inspection count.</h1>
-        <p className="login-copy">Computer vision for production quality, defect intelligence, and decisive action.</p>
+        <p className="login-copy">Computer vision for bottle quality, defect intelligence, and decisive action.</p>
         <div className="role-switcher" role="tablist" aria-label="Account role">
           <button className={account === 'engineer' ? 'active' : ''} onClick={() => chooseAccount('engineer')}>Quality engineer</button>
           <button className={account === 'supervisor' ? 'active' : ''} onClick={() => chooseAccount('supervisor')}>Factory supervisor</button>
@@ -95,14 +95,14 @@ function InspectionView({ user, onComplete }) {
 
   return <section className="workspace-grid">
     <div className="content-column">
-      <div className="page-heading"><div><p className="eyebrow">IMAGE ACQUISITION / INSPECTION</p><h2>Inspection workspace</h2><p>Validate, process, and classify a product image or a production batch.</p></div><span className="status-dot">SYSTEM READY</span></div>
+          <div className="page-heading"><div><p className="eyebrow">BOTTLE IMAGE / INSPECTION</p><h2>Bottle inspection workspace</h2><p>Upload bottle photos for defect detection and quality scoring.</p></div><span className="status-dot">SYSTEM READY</span></div>
       <div className="upload-panel">
-        <label className="drop-zone"><input type="file" accept="image/*" multiple onChange={(event) => setFiles([...event.target.files])} /><span className="upload-icon">＋</span><strong>{files.length ? `${files.length} image${files.length > 1 ? 's' : ''} selected` : 'Drop product images here'}</strong><small>JPG, PNG, BMP, or WebP · max 10 MB each</small></label>
+        <label className="drop-zone"><input type="file" accept="image/*" multiple onChange={(event) => setFiles([...event.target.files])} /><span className="upload-icon">＋</span><strong>{files.length ? `${files.length} image${files.length > 1 ? 's' : ''} selected` : 'Drop bottle images here'}</strong><small>JPG, PNG, BMP, or WebP · max 10 MB each</small></label>
         <div className="form-row"><label>Capture source<select value={source} onChange={(event) => setSource(event.target.value)}><option>Manual upload</option><option>Camera simulation</option><option>Production line capture</option><option>Historical repository</option></select></label><label>Batch / line ID<input value={batchId} onChange={(event) => setBatchId(event.target.value)} /></label><button className="primary-button inspect-button" onClick={inspect} disabled={!files.length || busy}>{busy ? 'Processing...' : 'Run inspection →'}</button></div>
       </div>
       {error && <p className="error-text">{error}</p>}
       {results.length > 0 && <div className="results-stack">{results.map((result) => <InspectionResult key={result.id} result={result} />)}</div>}
-      {!results.length && <div className="empty-state"><span>◎</span><strong>Ready for an image</strong><p>The inspection pipeline will preprocess, compare, classify, and score the selected product.</p></div>}
+      {!results.length && <div className="empty-state"><span>◎</span><strong>Ready for a bottle image</strong><p>The inspection pipeline will preprocess, compare, classify, and score the selected bottle.</p></div>}
     </div>
     <aside className="side-column"><div className="side-card"><p className="eyebrow">PIPELINE STATUS</p>{['Image validation', 'Preprocessing & enhancement', 'Anomaly detection', 'Classification & severity', 'Quality decision'].map((step, index) => <div className="pipeline-step" key={step}><span>{String(index + 1).padStart(2, '0')}</span><strong>{step}</strong><i>Ready</i></div>)}</div><div className="side-card accent-card"><p className="eyebrow">QUALITY RULE</p><strong>Good products pass. Every bad product gets a reason.</strong><p>Critical results trigger rejection and quality review.</p></div></aside>
   </section>;

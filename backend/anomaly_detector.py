@@ -2,7 +2,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-from defect_model import predict as predict_model
+from defect_model import PRODUCT_CATEGORY, predict as predict_model
 
 # Import dataset loader from Milestone 1
 try:
@@ -79,13 +79,15 @@ def classify_defect(defect_count, total_defect_area, bounding_boxes, image_area)
         return "good"
 
     area_ratio = total_defect_area / image_area
-    largest_dimension = max(max(box[2], box[3]) for box in bounding_boxes)
+    largest_dimension = max((max(box[2], box[3]) for box in bounding_boxes), default=0)
     image_dimension = int(image_area ** 0.5)
 
-    if defect_count > 1 or area_ratio < 0.006:
+    if defect_count >= 3 or area_ratio < 0.003:
         return "contamination"
-    if area_ratio >= 0.02 or largest_dimension >= image_dimension * 0.25:
+    if area_ratio >= 0.18 or largest_dimension >= image_dimension * 0.60:
         return "broken_large"
+    if defect_count > 1:
+        return "contamination"
     return "broken_small"
 
 
@@ -147,7 +149,7 @@ def detect_defects(
         else test_img.copy()
     )
 
-    # 1. Geometry Detection (Bottle vs Grid)
+    # 1. Bottle geometry detection
     circles = cv2.HoughCircles(
         cv2.GaussianBlur(gray, (7, 7), 0),
         cv2.HOUGH_GRADIENT,
@@ -158,7 +160,7 @@ def detect_defects(
         minRadius=int(min(h, w) * 0.20),
         maxRadius=int(min(h, w) * 0.48),
     )
-    category = "bottle" if circles is not None else "grid"
+    category = PRODUCT_CATEGORY
     known_label = match_known_dataset_label(test_img, category) if use_dataset_match else None
     model_prediction = predict_model(test_img, category=category) if use_model else None
 
@@ -184,15 +186,14 @@ def detect_defects(
         _, ssim_map = ssim(norm_ref, norm_test, full=True)
         ssim_diff = np.uint8(np.clip((1.0 - ssim_map) * 255, 0, 255))
 
-        if category == "bottle" and circles is not None:
+        if circles is not None:
             cx, cy, r = circles[0][0]
             mask = np.zeros((h, w), dtype=np.uint8)
             cv2.circle(mask, (int(cx), int(cy)), int(r * 1.05), 255, -1)
             ssim_diff = cv2.bitwise_and(ssim_diff, ssim_diff, mask=mask)
 
         blurred = cv2.GaussianBlur(ssim_diff, (7, 7), 0)
-        thresh_val = 90 if category == "bottle" else 100
-        _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(blurred, 90, 255, cv2.THRESH_BINARY)
     else:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         norm_test = clahe.apply(gray)
@@ -261,14 +262,20 @@ def detect_defects(
     elif known_label is not None:
         is_defective = True
         defect_type = known_label
-    elif model_prediction and model_prediction["confidence"] >= 0.8:
-        is_defective = model_prediction["label"] != "good"
-        defect_type = model_prediction["label"]
+    elif model_prediction and model_prediction["confidence"] >= 0.95:
+        if model_prediction["label"] == "good":
+            is_defective = False
+        elif defect_type in {"broken_small", "contamination"} and model_prediction["label"] in {"broken_small", "contamination"}:
+            is_defective = True
+            defect_type = model_prediction["label"]
+        elif defect_type == "broken_large" and model_prediction["label"] == "broken_large":
+            is_defective = True
+            defect_type = "broken_large"
     classification = "bad" if is_defective else "good"
 
     if is_defective:
         size_score = min(100, max(0, int((total_defect_area / (h * w)) * 1000)))
-        location_score = 90 if category == "bottle" else 75
+        location_score = 90
         defect_type_score = {
             "broken_large": 95,
             "broken_small": 82,

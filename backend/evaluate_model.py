@@ -14,7 +14,7 @@ from pathlib import Path
 import cv2
 
 from anomaly_detector import detect_defects
-from defect_model import build_model, load_samples, predict
+from defect_model import PRODUCT_CATEGORY, build_model, load_samples, predict
 
 LABELS = ["good", "contamination", "broken_small", "broken_large"]
 
@@ -105,7 +105,7 @@ def main():
         }, indent=2))
         return
 
-    for category_dir in sorted(root.iterdir()):
+    for category_dir in [root / PRODUCT_CATEGORY]:
         test_dir = category_dir / "test"
         if not test_dir.exists():
             continue
