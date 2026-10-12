@@ -1,5 +1,19 @@
 services:
   - type: web
+    name: visioninspect-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://visioninspect-api-ejgl.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
     name: visioninspect-api
     runtime: python
     plan: free

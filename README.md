@@ -61,14 +61,12 @@ Stop the containers with `docker compose down`. Stop any local servers using por
 
 ## Free cloud demo (Vercel + Render)
 
-The frontend can be hosted as a Vercel static site, with the FastAPI API hosted as a Render web service. Both providers offer free plans with limits; Render's free service sleeps when idle and has an ephemeral filesystem.
+The frontend can be hosted as a Render static site, with the FastAPI API hosted as a Render web service. The root `render.yaml` configures both services. Render offers free plans with limits; its backend free service sleeps when idle and has an ephemeral filesystem.
 
-1. In Render, create a Blueprint from this GitHub repository using the root `render.yaml`. It creates the backend service, pins Python to 3.11 for the available machine-learning dependency wheels, and generates `VISIONINSPECT_TOKEN_SECRET`.
-2. Copy the backend service URL from Render, such as `https://visioninspect-api.onrender.com`.
-3. In Vercel, import the same repository and set the project root directory to `frontend`. The Vercel settings are in `frontend/vercel.json`.
-4. In the Vercel project's environment variables, set `VITE_API_URL` to the Render service URL (without a trailing slash), then deploy or redeploy the frontend.
+1. In Render, create or sync a Blueprint from this GitHub repository using the root `render.yaml`. It creates a static frontend site and the backend service, pins Python to 3.11 for the available machine-learning dependency wheels, and generates `VISIONINSPECT_TOKEN_SECRET`.
+2. Wait until both `visioninspect-web` and `visioninspect-api` show **Live**. Open the static site's `.onrender.com` URL to use the app.
 
-The frontend expects `VITE_API_URL` at build time; local development continues to use `http://127.0.0.1:8000`.
+The frontend gets `VITE_API_URL` from the Blueprint at build time; local development continues to use `http://127.0.0.1:8000`. Vercel configuration is also available in `frontend/vercel.json` if deploying the frontend there instead.
 
 **Model limitation:** `backend/defect_model.pkl` is excluded from Git, and the licensed MVTec training dataset is not in the repository. A fresh Render deployment therefore cannot perform image inspections until a permitted model artifact is made available to the backend. Do not commit licensed dataset images or derived model files unless their license permits redistribution. SQLite records and uploaded files on Render's free service are also temporary and can be lost when the service restarts or spins down. This setup is for a non-production demo.
 
